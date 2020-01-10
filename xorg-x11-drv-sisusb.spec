@@ -4,8 +4,8 @@
 
 Summary:   Xorg X11 sisusb video driver
 Name:      xorg-x11-drv-sisusb
-Version:   0.9.4
-Release:   1%{?dist}
+Version:   0.9.6
+Release:   2%{?dist}
 URL:       http://www.x.org
 License:   MIT
 Group:     User Interface/X Hardware Support
@@ -50,6 +50,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_mandir}/man4/*.4*
 
 %changelog
+* Wed Aug 22 2012 airlied@redhat.com - 0.9.6-2
+- rebuild for server ABI requires
+
+* Mon Aug 06 2012 Dave Airlie <airlied@redhat.com> 0.9.6-1
+- upstream release 0.9.6
+
 * Tue Jun 28 2011 Ben Skeggs <bskeggs@redhat.com> 0.9.4-1
 - upstream release 0.9.4
 

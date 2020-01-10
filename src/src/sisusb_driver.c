@@ -37,7 +37,6 @@
 
 #include "dixstruct.h"
 #include "shadowfb.h"
-#include "fb.h"
 #include "micmap.h"
 #include "mipointer.h"
 #include "mibstore.h"
@@ -186,12 +185,12 @@ SISUSBFreeRec(ScrnInfoPtr pScrn)
     /* Just to make sure... */
     if(!pSiSUSB) return;
 
-    if(pSiSUSB->pstate) xfree(pSiSUSB->pstate);
+    if(pSiSUSB->pstate) free(pSiSUSB->pstate);
     pSiSUSB->pstate = NULL;
-    if(pSiSUSB->fonts) xfree(pSiSUSB->fonts);
+    if(pSiSUSB->fonts) free(pSiSUSB->fonts);
     pSiSUSB->fonts = NULL;
 
-    if(pSiSUSB->SiS_Pr) xfree(pSiSUSB->SiS_Pr);
+    if(pSiSUSB->SiS_Pr) free(pSiSUSB->SiS_Pr);
     pSiSUSB->SiS_Pr = NULL;
 
     if(pSiSUSB->sisusbdevopen) {
@@ -200,12 +199,12 @@ SISUSBFreeRec(ScrnInfoPtr pScrn)
     }
 
     if(pScrn->chipset) {
-       xfree(pScrn->chipset);
+       free(pScrn->chipset);
        pScrn->chipset = NULL;
     }
 
     if(pScrn->driverPrivate) {
-       xfree(pScrn->driverPrivate);
+       free(pScrn->driverPrivate);
        pScrn->driverPrivate = NULL;
     }
 }
@@ -217,14 +216,14 @@ SISUSBErrorLog(ScrnInfoPtr pScrn, const char *format, ...)
     static const char *str = "**************************************************\n";
 
     va_start(ap, format);
-    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, str);
+    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "%s", str);
     xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
     	"                      ERROR:\n");
     xf86VDrvMsgVerb(pScrn->scrnIndex, X_ERROR, 1, format, ap);
     va_end(ap);
     xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
     	"                  END OF MESSAGE\n");
-    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, str);
+    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "%s", str);
 }
 
 static int
@@ -248,7 +247,7 @@ SiSUSBCheckForUSBDongle(char *filename, SISUSBPtr pSiSUSB, int *filehandle)
 
     if((myfile = open(filename, O_RDWR, 0)) != -1) {
        if(!ioctl(myfile, SISUSB_GET_CONFIG_SIZE, &sisusbinfosize)) {
-	  if((mysisusbinfo = xalloc(sisusbinfosize))) {
+	  if((mysisusbinfo = malloc(sisusbinfosize))) {
 	     if(!ioctl(myfile, (SISUSB_GET_CONFIG | (sisusbinfosize << 16)), mysisusbinfo)) {
 		if(mysisusbinfo->sisusb_id == SISUSB_ID) {
 		   sisusbversion = (mysisusbinfo->sisusb_version  << 16) |
@@ -280,7 +279,7 @@ SiSUSBCheckForUSBDongle(char *filename, SISUSBPtr pSiSUSB, int *filehandle)
 		   retval = mysisusbinfo->sisusb_minor;
 		}
 	     }
-	     xfree(mysisusbinfo);
+	     free(mysisusbinfo);
 	     mysisusbinfo = NULL;
 	  }
        }
@@ -307,13 +306,13 @@ SiSUSBFindUSBDongle(GDevPtr dev, int *minorArray, int numDevSections, char **nam
        }
        if((p) && (*p) && (*p == '/')) {
           gotdev = 1;
-	  *nameptr = xalloc(strlen(p) + 1);
+	  *nameptr = malloc(strlen(p) + 1);
           strcpy(*nameptr, p);
 	  retval = SiSUSBCheckForUSBDongle(*nameptr, NULL, NULL);
        } else if((p) && (*p) && (sscanf(p, "%d", &i) == 1)) {
           if(i >= 0 && i <= 31) {
              gotdev = 1;
-	     *nameptr = xalloc(32);
+	     *nameptr = malloc(32);
              sprintf(*nameptr, "/dev/sisusbvga%d", i);
              retval = SiSUSBCheckForUSBDongle(*nameptr, NULL, NULL);
 	     if(retval < 0) {
@@ -324,7 +323,7 @@ SiSUSBFindUSBDongle(GDevPtr dev, int *minorArray, int numDevSections, char **nam
        }
     }
     if(!gotdev) {
-       *nameptr = xalloc(32);
+       *nameptr = malloc(32);
        for(i = 0; i < 64; i++) {
           if(i < 32) sprintf(*nameptr, "/dev/sisusbvga%d", i);
 	  else       sprintf(*nameptr, "/dev/usb/sisusbvga%d", i);
@@ -338,7 +337,7 @@ SiSUSBFindUSBDongle(GDevPtr dev, int *minorArray, int numDevSections, char **nam
     if(retval >= 0) {
        xf86Msg(X_INFO, "Found SiSUSB dongle (node %s, minor %d)\n", *nameptr, retval);
     } else if((*nameptr)) {
-       xfree(*nameptr);
+       free(*nameptr);
        *nameptr = NULL;
     }
 
@@ -401,14 +400,14 @@ SISUSBProbe(DriverPtr drv, int flags)
      */
 
     /* Allocate and initialize an array of ints for storing the minors */
-    if(!(minorArray = (int *)xalloc(numDevSections * sizeof(int)))) {
+    if(!(minorArray = (int *)malloc(numDevSections * sizeof(int)))) {
        return FALSE;
     }
     for(i = 0; i < numDevSections; i++) minorArray[i] = -1;
 
     /* Allocate an array of char ptrs for storing the device node names */
-    if(!(devnameArray = (char **)xalloc(numDevSections * sizeof(char *)))) {
-       xfree(minorArray);
+    if(!(devnameArray = (char **)malloc(numDevSections * sizeof(char *)))) {
+       free(minorArray);
        return FALSE;
     }
 
@@ -420,20 +419,20 @@ SISUSBProbe(DriverPtr drv, int flags)
        if((myminor = SiSUSBFindUSBDongle(devSections[i], minorArray, numDevSections, &nameptr)) >= 0) {
           if(!SiSUSBFindDuplicate(myminor, minorArray, numDevSections)) {
 	     minorArray[numUsed] = myminor;
-	     devnameArray[numUsed] = xalloc(strlen(nameptr) + 1);
+	     devnameArray[numUsed] = malloc(strlen(nameptr) + 1);
 	     strcpy(devnameArray[numUsed], nameptr);
              numUsed++;
 	  }
-	  xfree(nameptr);
+	  free(nameptr);
        }
     }
 
     /* Free the minor array, we don't need it anymore */
-    xfree(minorArray);
+    free(minorArray);
 
     if(numUsed <= 0) {
-       xfree(devSections);
-       xfree(devnameArray);
+       free(devSections);
+       free(devnameArray);
        return FALSE;
     }
 
@@ -470,8 +469,8 @@ SISUSBProbe(DriverPtr drv, int flags)
 
     }
 
-    xfree(devSections);
-    xfree(devnameArray);
+    free(devSections);
+    free(devnameArray);
     return foundScreen;
 }
 
@@ -622,10 +621,10 @@ SISUSBCalculateGammaRamp(ScreenPtr pScreen, ScrnInfoPtr pScrn)
    if(!(nramp = xf86GetGammaRampSize(pScreen))) return;
 
    for(i=0; i<3; i++) {
-      ramp[i] = (UShort *)xalloc(nramp * sizeof(UShort));
+      ramp[i] = (UShort *)malloc(nramp * sizeof(UShort));
       if(!ramp[i]) {
-         if(ramp[0]) { xfree(ramp[0]); ramp[0] = NULL; }
-	 if(ramp[1]) { xfree(ramp[1]); ramp[1] = NULL; }
+         if(ramp[0]) { free(ramp[0]); ramp[0] = NULL; }
+	 if(ramp[1]) { free(ramp[1]); ramp[1] = NULL; }
          return;
       }
    }
@@ -685,9 +684,9 @@ SISUSBCalculateGammaRamp(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 
    xf86ChangeGammaRamp(pScreen, nramp, ramp[0], ramp[1], ramp[2]);
 
-   xfree(ramp[0]);
-   xfree(ramp[1]);
-   xfree(ramp[2]);
+   free(ramp[0]);
+   free(ramp[1]);
+   free(ramp[2]);
    ramp[0] = ramp[1] = ramp[2] = NULL;
 }
 #endif
@@ -906,11 +905,11 @@ SISUSBPreInit(ScrnInfoPtr pScrn, int flags)
 	     Bool gotit = FALSE;
 
 	     if(!ioctl(fd, SISUSBFB_GET_INFO_SIZE, &sisfbinfosize)) {
-		if((mysisfbinfo = xalloc(sisfbinfosize))) {
+		if((mysisfbinfo = malloc(sisfbinfosize))) {
 		   if(!ioctl(fd, (SISUSBFB_GET_INFO | (sisfbinfosize << 16)), mysisfbinfo)) {
 		      gotit = TRUE;
 		   } else {
-		      xfree(mysisfbinfo);
+		      free(mysisfbinfo);
 		      mysisfbinfo = NULL;
 		   }
 		}
@@ -944,7 +943,7 @@ SISUSBPreInit(ScrnInfoPtr pScrn, int flags)
 
 		   }
 	        }
-		xfree(mysisfbinfo);
+		free(mysisfbinfo);
 		mysisfbinfo = NULL;
 	     }
 	     close (fd);
@@ -1147,7 +1146,7 @@ SISUSBPreInit(ScrnInfoPtr pScrn, int flags)
 #endif
 
     if(pSiSUSB->HWCursor) {
-       if(!(pSiSUSB->USBCursorBuf = xcalloc(pSiSUSB->CursorSize * 4, 1))) pSiSUSB->HWCursor = FALSE;
+       if(!(pSiSUSB->USBCursorBuf = calloc(pSiSUSB->CursorSize * 4, 1))) pSiSUSB->HWCursor = FALSE;
 
        pSiSUSB->availMem -= (pSiSUSB->CursorSize * 2);
        if(pSiSUSB->OptUseColorCursor) pSiSUSB->availMem -= (pSiSUSB->CursorSize * 2);
@@ -1456,8 +1455,8 @@ SISUSBMapMem(ScrnInfoPtr pScrn)
 {
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
 
-    pSiSUSB->FbBase = (UChar *)pSiSUSB->FbAddress;
-    pSiSUSB->IOBase = (UChar *)pSiSUSB->IOAddress;
+    pSiSUSB->FbBase = (UChar *)(uintptr_t)pSiSUSB->FbAddress;
+    pSiSUSB->IOBase = (UChar *)(uintptr_t)pSiSUSB->IOAddress;
 
     return TRUE;
 }
@@ -1638,10 +1637,10 @@ SISUSBBridgeRestore(ScrnInfoPtr pScrn)
 
 /* Our generic BlockHandler for Xv */
 static void
-SISUSBBlockHandler(int i, pointer blockData, pointer pTimeout, pointer pReadmask)
+SISUSBBlockHandler(BLOCKHANDLER_ARGS_DECL)
 {
-    ScreenPtr pScreen = screenInfo.screens[i];
-    ScrnInfoPtr pScrn = xf86Screens[i];
+    SCREEN_PTR(arg);
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
 
     if((pSiSUSB->sisusbfatalerror) && (pSiSUSB->timeout != -1)) {
@@ -1651,7 +1650,7 @@ SISUSBBlockHandler(int i, pointer blockData, pointer pTimeout, pointer pReadmask
 	     pSiSUSB->sisusberrorsleepcount = 0;
 	     pSiSUSB->sisusbfatalerror = 0;
 	     pSiSUSB->sisusbdevopen = TRUE;
-	     (*pScrn->SwitchMode)(pScrn->scrnIndex, pScrn->currentMode, 0);
+	     (*pScrn->SwitchMode)(SWITCH_MODE_ARGS(pScrn, pScrn->currentMode));
 	     pSiSUSB->ShBoxcount = 1;
 	     pSiSUSB->ShXmin = pSiSUSB->ShYmin = 0;
 	     pSiSUSB->ShXmax = pScrn->virtualX;
@@ -1669,7 +1668,7 @@ SISUSBBlockHandler(int i, pointer blockData, pointer pTimeout, pointer pReadmask
     SISUSBDoRefreshArea(pScrn);
 
     pScreen->BlockHandler = pSiSUSB->BlockHandler;
-    (*pScreen->BlockHandler) (i, blockData, pTimeout, pReadmask);
+    (*pScreen->BlockHandler) (BLOCKHANDLER_ARGS);
     pScreen->BlockHandler = SISUSBBlockHandler;
 
     if(pSiSUSB->VideoTimerCallback) {
@@ -1686,9 +1685,9 @@ SISUSBBlockHandler(int i, pointer blockData, pointer pTimeout, pointer pReadmask
  * depth, bitsPerPixel)
  */
 static Bool
-SISUSBScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
+SISUSBScreenInit(SCREEN_INIT_ARGS_DECL)
 {
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
     int ret;
     VisualPtr visual;
@@ -1784,7 +1783,7 @@ SISUSBScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     SISUSBSaveScreen(pScreen, SCREEN_SAVER_ON);
 
     /* Set the viewport */
-    SISUSBAdjustFrame(scrnIndex, pScrn->frameX0, pScrn->frameY0, 0);
+    SISUSBAdjustFrame(ADJUST_FRAME_ARGS(pScrn, pScrn->frameX0, pScrn->frameY0));
 
     /* Reset visual list. */
     miClearVisualTypes();
@@ -1811,7 +1810,7 @@ SISUSBScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
     if(pSiSUSB->ShadowFB) {
        pSiSUSB->ShadowPitch = BitmapBytePad(pScrn->bitsPerPixel * displayWidth);
-       pSiSUSB->ShadowPtr = xalloc(pSiSUSB->ShadowPitch * height);
+       pSiSUSB->ShadowPtr = malloc(pSiSUSB->ShadowPitch * height);
        if(!(FBStart = pSiSUSB->ShadowPtr)) {
           SISUSBSaveScreen(pScreen, SCREEN_SAVER_OFF);
           SISUSBErrorLog(pScrn, "Failed to allocate shadow framebuffer\n");
@@ -1820,7 +1819,7 @@ SISUSBScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 #if X_BYTE_ORDER == X_BIG_ENDIAN
        if(pScrn->bitsPerPixel == 16) {
           /* For 16bpp, we need to swap the bytes in the framebuffer */
-          if(!(pSiSUSB->ShadowPtrSwap = xalloc(pSiSUSB->ShadowPitch * height))) {
+          if(!(pSiSUSB->ShadowPtrSwap = malloc(pSiSUSB->ShadowPitch * height))) {
 	     SISUSBSaveScreen(pScreen, SCREEN_SAVER_OFF);
              SISUSBErrorLog(pScrn, "Failed to allocate swap buffer for shadow framebuffer\n");
              return FALSE;
@@ -2044,13 +2043,13 @@ SISUSBScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 /* Usually mandatory */
 Bool
-SISUSBSwitchMode(int scrnIndex, DisplayModePtr mode, int flags)
+SISUSBSwitchMode(SWITCH_MODE_ARGS_DECL)
 {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    SCRN_INFO_PTR(arg);
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
 
     if(!pSiSUSB->skipswitchcheck) {
-       if(SISUSBValidMode(scrnIndex, mode, TRUE, flags) != MODE_OK) {
+       if(SISUSBValidMode(arg, mode, TRUE, 0) != MODE_OK) {
           return FALSE;
        }
     }
@@ -2061,7 +2060,7 @@ SISUSBSwitchMode(int scrnIndex, DisplayModePtr mode, int flags)
     }
 #endif
 
-    if(!(SISUSBModeInit(xf86Screens[scrnIndex], mode))) return FALSE;
+    if(!(SISUSBModeInit(pScrn, mode))) return FALSE;
 
     return TRUE;
 }
@@ -2089,9 +2088,9 @@ SISUSBSetStartAddressCRT1(SISUSBPtr pSiSUSB, ULong base)
  * Usually mandatory
  */
 void
-SISUSBAdjustFrame(int scrnIndex, int x, int y, int flags)
+SISUSBAdjustFrame(ADJUST_FRAME_ARGS_DECL)
 {
-    ScrnInfoPtr   pScrn = xf86Screens[scrnIndex];
+    SCRN_INFO_PTR(arg);
     SISUSBPtr        pSiSUSB = SISUSBPTR(pScrn);
     ULong base;
 
@@ -2130,9 +2129,9 @@ SISUSBAdjustFrame(int scrnIndex, int x, int y, int flags)
  * Mandatory!
  */
 static Bool
-SISUSBEnterVT(int scrnIndex, int flags)
+SISUSBEnterVT(VT_FUNC_ARGS_DECL)
 {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    SCRN_INFO_PTR(arg);
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
 
     SiSUSB_SiSFB_Lock(pScrn, TRUE);
@@ -2148,7 +2147,7 @@ SISUSBEnterVT(int scrnIndex, int flags)
        return FALSE;
     }
 
-    SISUSBAdjustFrame(scrnIndex, pScrn->frameX0, pScrn->frameY0, 0);
+    SISUSBAdjustFrame(ADJUST_FRAME_ARGS(pScrn, pScrn->frameX0, pScrn->frameY0));
 
     if(pSiSUSB->ResetXv) {
        (pSiSUSB->ResetXv)(pScrn);
@@ -2163,9 +2162,9 @@ SISUSBEnterVT(int scrnIndex, int flags)
  * Mandatory!
  */
 static void
-SISUSBLeaveVT(int scrnIndex, int flags)
+SISUSBLeaveVT(VT_FUNC_ARGS_DECL)
 {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    SCRN_INFO_PTR(arg);
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
 
     if(pSiSUSB->CursorInfoPtr) {
@@ -2197,9 +2196,9 @@ SISUSBLeaveVT(int scrnIndex, int flags)
  * Mandatory!
  */
 static Bool
-SISUSBCloseScreen(int scrnIndex, ScreenPtr pScreen)
+SISUSBCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
 
     if(pSiSUSB->SiSCtrlExtEntry) {
@@ -2238,24 +2237,24 @@ SISUSBCloseScreen(int scrnIndex, ScreenPtr pScreen)
     }
 
     if(pSiSUSB->USBCursorBuf) {
-       xfree(pSiSUSB->USBCursorBuf);
+       free(pSiSUSB->USBCursorBuf);
        pSiSUSB->USBCursorBuf = NULL;
     }
 
     if(pSiSUSB->ShadowPtr) {
-       xfree(pSiSUSB->ShadowPtr);
+       free(pSiSUSB->ShadowPtr);
        pSiSUSB->ShadowPtr = NULL;
     }
 
 #if 0
     if(pSiSUSB->PreAllocMem) {
-       xfree(pSiSUSB->PreAllocMem);
+       free(pSiSUSB->PreAllocMem);
        pSiSUSB->PreAllocMem = NULL;
     }
 #endif
 
     if(pSiSUSB->adaptor) {
-       xfree(pSiSUSB->adaptor);
+       free(pSiSUSB->adaptor);
        pSiSUSB->adaptor = NULL;
        pSiSUSB->ResetXv = pSiSUSB->ResetXvGamma = NULL;
     }
@@ -2273,7 +2272,7 @@ SISUSBCloseScreen(int scrnIndex, ScreenPtr pScreen)
 
     pScreen->CloseScreen = pSiSUSB->CloseScreen;
 
-    return(*pScreen->CloseScreen)(scrnIndex, pScreen);
+    return(*pScreen->CloseScreen)(CLOSE_SCREEN_ARGS);
 }
 
 
@@ -2281,18 +2280,19 @@ SISUSBCloseScreen(int scrnIndex, ScreenPtr pScreen)
 
 /* Optional */
 static void
-SISUSBFreeScreen(int scrnIndex, int flags)
+SISUSBFreeScreen(FREE_SCREEN_ARGS_DECL)
 {
-    SISUSBFreeRec(xf86Screens[scrnIndex]);
+    SCRN_INFO_PTR(arg);
+    SISUSBFreeRec(pScrn);
 }
 
 
 /* Checks if a mode is suitable for the selected chipset. */
 
 static ModeStatus
-SISUSBValidMode(int scrnIndex, DisplayModePtr mode, Bool verbose, int flags)
+SISUSBValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode, Bool verbose, int flags)
 {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    SCRN_INFO_PTR(arg);
     SISUSBPtr pSiSUSB = SISUSBPTR(pScrn);
 
     if(SiSUSB_CheckModeCRT1(pScrn, mode, pSiSUSB->VBFlags, pSiSUSB->HaveCustomModes) < 0x14)

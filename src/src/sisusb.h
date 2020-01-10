@@ -86,7 +86,7 @@
 #include "xf86.h"
 #include "xf86Cursor.h"
 #include "xf86cmap.h"
-#include "xaa.h"
+#include "xf86fbman.h"
 
 #define SISUSB_HaveDriverFuncs 0
 
@@ -111,6 +111,18 @@
 #if (XF86_VERSION_CURRENT >= XF86_VERSION_NUMERIC(4,3,99,0)) || (defined(XvExtension))
 #include "xf86xv.h"
 #include <X11/extensions/Xv.h>
+#endif
+
+#include "fb.h"
+
+#include "compat-api.h"
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 12
+#define _swapl(x, n) swapl(x,n)
+#define _swaps(x, n) swaps(x,n)
+#else
+#define _swapl(x, n) swapl(x)
+#define _swaps(x, n) swaps(x)
 #endif
 
 /* Platform/architecture related definitions: */
@@ -141,7 +153,6 @@
 #define UNLOCK_ALWAYS		/* Always unlock the registers (should be set!) */
 
 /* Need that for SiSCtrl */
-#define NEED_REPLIES		/* ? */
 #define EXTENSION_PROC_ARGS void *
 #include "extnsionst.h" 			/* required */
 #include <X11/extensions/panoramiXproto.h>	/* required */
@@ -732,7 +743,7 @@ typedef struct {
     Bool		skipswitchcheck;
     ULong		VBFlagsInit;
     DisplayModePtr	currentModeLast;
-    IOADDRESS		MyPIOOffset;
+    unsigned long		MyPIOOffset;
 
     char		messagebuffer[64];
     unsigned int	VGAMapSize;		/* SiSVGA stuff */
